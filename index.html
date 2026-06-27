@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ジャンプ読書トラッカー</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; padding: 20px; max-width: 700px; margin: 0 auto; }
+  h1 { font-size: 1.4em; margin-bottom: 20px; color: #fff; }
+  .manga-section { margin-bottom: 30px; }
+  .manga-title { font-size: 1.1em; font-weight: bold; color: #e94560; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .progress { font-size: 0.85em; color: #aaa; margin-bottom: 10px; }
+  .ep-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ep {
+    display: inline-block;
+    padding: 6px 12px;
+    background: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 6px;
+    color: #7ec8e3;
+    text-decoration: none;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .ep:hover { background: #0f3460; }
+  .ep.read {
+    background: #1b4332;
+    border-color: #2d6a4f;
+    color: #95d5b2;
+  }
+  .ep.read::after { content: ' ✓'; }
+  .controls { margin-top: 15px; }
+  .controls button {
+    background: #333;
+    color: #aaa;
+    border: 1px solid #555;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8em;
+  }
+  .controls button:hover { background: #444; color: #fff; }
+</style>
+</head>
+<body>
+
+<h1>ジャンプ読書トラッカー</h1>
+
+<div id="app"></div>
+
+<script>
+const STORAGE_KEY = 'jump_reading_tracker';
+
+const manga = [
+  {
+    title: 'カグラバチ（外薗健）',
+    startInfo: '2023年42号〜',
+    episodes: [
+      { ep: 1, issue: '2023年42号', url: 'https://shonenjumpplus.com/magazine/14079602755206951472' },
+      { ep: 2, issue: '43号', url: 'https://shonenjumpplus.com/magazine/14079602755232233517' },
+      { ep: 3, issue: '44号', url: 'https://shonenjumpplus.com/magazine/14079602755257147528' },
+      { ep: 4, issue: '45号', url: 'https://shonenjumpplus.com/magazine/14079602755280963484' },
+      { ep: 5, issue: '46号', url: 'https://shonenjumpplus.com/magazine/14079602755310849408' },
+      { ep: 6, issue: '47号', url: 'https://shonenjumpplus.com/magazine/14079602755347050738' },
+      { ep: 7, issue: '48号', url: 'https://shonenjumpplus.com/magazine/14079602755372806385' },
+      { ep: 8, issue: '49号', url: 'https://shonenjumpplus.com/magazine/14079602755396033442' },
+      { ep: 9, issue: '50号', url: 'https://shonenjumpplus.com/magazine/14079602755429002564' },
+      { ep: 10, issue: '51号', url: 'https://shonenjumpplus.com/magazine/14079602755455781263' },
+      { ep: 11, issue: '52号', url: 'https://shonenjumpplus.com/magazine/14079602755485404838' },
+      { ep: 12, issue: '2024年1号', url: 'https://shonenjumpplus.com/magazine/14079602755515868490' },
+      { ep: 13, issue: '2号', url: 'https://shonenjumpplus.com/magazine/14079602755540834262' },
+      { ep: 14, issue: '3号', url: 'https://shonenjumpplus.com/magazine/14079602755570849797' },
+      { ep: 15, issue: '4・5合併号', url: 'https://shonenjumpplus.com/magazine/16457704570601628141' },
+      { ep: 16, issue: '6・7合併号', url: 'https://shonenjumpplus.com/magazine/16457704570609771587' },
+      { ep: 17, issue: '8号', url: 'https://shonenjumpplus.com/magazine/11990162089558132050' },
+      { ep: 18, issue: '9号', url: 'https://shonenjumpplus.com/magazine/8603475606548438532' },
+      { ep: 19, issue: '10号', url: 'https://shonenjumpplus.com/magazine/8603475606555887962' },
+      { ep: 20, issue: '11号', url: 'https://shonenjumpplus.com/magazine/8603475606565375151' },
+      { ep: 21, issue: '12号', url: 'https://shonenjumpplus.com/magazine/9324074615347950129' },
+      { ep: 22, issue: '13号', url: 'https://shonenjumpplus.com/magazine/9324074615355503149' },
+      { ep: 23, issue: '14号', url: 'https://shonenjumpplus.com/magazine/9324103623758328694' },
+      { ep: 24, issue: '15号', url: 'https://shonenjumpplus.com/magazine/9324103625675457710' },
+      { ep: 25, issue: '16号', url: 'https://shonenjumpplus.com/magazine/9324103638157363626' },
+      { ep: 26, issue: '17号', url: 'https://shonenjumpplus.com/magazine/9324103658562972775' },
+      { ep: 27, issue: '18号', url: 'https://shonenjumpplus.com/magazine/9324146138974327223' },
+      { ep: 28, issue: '19号', url: 'https://shonenjumpplus.com/magazine/17106371852961002906' },
+      { ep: 29, issue: '20号', url: 'https://shonenjumpplus.com/magazine/17106371853090967330' },
+      { ep: 30, issue: '21号', url: 'https://shonenjumpplus.com/magazine/17106371853196558325' },
+      { ep: 31, issue: '22・23合併号', url: 'https://shonenjumpplus.com/magazine/17106371853393966287' },
+      { ep: 32, issue: '24号', url: 'https://shonenjumpplus.com/magazine/17106371853219477184' },
+      { ep: 33, issue: '25号', url: 'https://shonenjumpplus.com/magazine/17106371857664225580' },
+      { ep: 34, issue: '26号', url: 'https://shonenjumpplus.com/magazine/17106371857664227281' },
+      { ep: 35, issue: '27号', url: 'https://shonenjumpplus.com/magazine/17106371859435381446' },
+      { ep: 36, issue: '28号', url: 'https://shonenjumpplus.com/magazine/17106371859435384836' },
+      { ep: 37, issue: '29号', url: 'https://shonenjumpplus.com/magazine/17106371859435387750' },
+      { ep: 38, issue: '30号', url: 'https://shonenjumpplus.com/magazine/17106371859435390871' },
+      { ep: 39, issue: '31号', url: 'https://shonenjumpplus.com/magazine/17106371878170200353' },
+      { ep: 40, issue: '32号', url: 'https://shonenjumpplus.com/magazine/17106371878170208299' },
+    ]
+  },
+  {
+    title: 'さむわんへるつ（ヤマノエイ）',
+    startInfo: '2025年42号〜',
+    episodes: [
+      { ep: 1, issue: '2025年42号', url: '' },
+      { ep: 2, issue: '43号', url: '' },
+      { ep: 3, issue: '44号', url: '' },
+      { ep: 4, issue: '45号', url: '' },
+      { ep: 5, issue: '46号', url: '' },
+    ]
+  }
+];
+
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+}
+
+function saveState(state) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function render() {
+  const state = loadState();
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  manga.forEach(m => {
+    const section = document.createElement('div');
+    section.className = 'manga-section';
+
+    const key = m.title;
+    if (!state[key]) state[key] = {};
+
+    const readCount = Object.values(state[key]).filter(Boolean).length;
+    const total = m.episodes.length;
+
+    section.innerHTML = `
+      <div class="manga-title">${m.title}</div>
+      <div class="progress">${readCount}/${total} 話 既読 ・ ${m.startInfo}</div>
+    `;
+
+    const list = document.createElement('div');
+    list.className = 'ep-list';
+
+    m.episodes.forEach(e => {
+      const a = document.createElement('a');
+      a.textContent = `${e.ep}話`;
+      a.title = e.issue;
+      a.className = 'ep' + (state[key][e.ep] ? ' read' : '');
+
+      if (e.url) {
+        a.href = e.url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.addEventListener('click', () => {
+          state[key][e.ep] = true;
+          saveState(state);
+          setTimeout(render, 100);
+        });
+      } else {
+        a.style.opacity = '0.4';
+        a.style.cursor = 'default';
+        a.title = e.issue + '（URL未登録）';
+      }
+
+      list.appendChild(a);
+    });
+
+    section.appendChild(list);
+
+    const controls = document.createElement('div');
+    controls.className = 'controls';
+    const resetBtn = document.createElement('button');
+    resetBtn.textContent = 'リセット';
+    resetBtn.addEventListener('click', () => {
+      if (confirm(`${m.title} の既読をリセットしますか？`)) {
+        state[key] = {};
+        saveState(state);
+        render();
+      }
+    });
+    controls.appendChild(resetBtn);
+    section.appendChild(controls);
+
+    app.appendChild(section);
+  });
+}
+
+render();
+</script>
+</body>
+</html>
