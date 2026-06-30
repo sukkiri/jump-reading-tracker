@@ -42,6 +42,15 @@
     font-size: 0.8em;
   }
   .controls button:hover { background: #444; color: #fff; }
+  .done-section { margin-top: 40px; border-top: 2px solid #333; padding-top: 20px; }
+  .done-section .section-header { font-size: 1em; color: #666; margin-bottom: 15px; }
+  .done-toggle { cursor: pointer; user-select: none; }
+  .done-toggle::before { content: '▶ '; font-size: 0.8em; }
+  .done-toggle.open::before { content: '▼ '; }
+  .done-body { display: none; }
+  .done-body.open { display: block; }
+  .manga-section.done .manga-title { color: #888; }
+  .manga-section.done .progress { color: #666; }
 </style>
 </head>
 <body>
@@ -57,6 +66,7 @@ const manga = [
   {
     title: 'カグラバチ（外薗健）',
     startInfo: '2023年42号〜',
+    done: true,
     episodes: [
       { ep: 1, issue: '2023年42号', url: 'https://shonenjumpplus.com/magazine/14079602755206951472' },
       { ep: 2, issue: '43号', url: 'https://shonenjumpplus.com/magazine/14079602755232233517' },
@@ -188,6 +198,7 @@ const manga = [
   {
     title: 'HUNTER×HUNTER（冨樫義博）',
     startInfo: '381話〜（2018年43号〜）',
+    done: true,
     episodes: [
       { ep: 381, issue: '2018年43号', url: 'https://shonenjumpplus.com/magazine/13933686331641411258' },
       { ep: 382, issue: '44号', url: 'https://shonenjumpplus.com/magazine/13933686331641411268' },
@@ -337,71 +348,97 @@ function saveState(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function buildSection(m, state) {
+  const section = document.createElement('div');
+  section.className = 'manga-section' + (m.done ? ' done' : '');
+
+  const key = m.title;
+  if (!state[key]) state[key] = {};
+
+  const readCount = Object.values(state[key]).filter(Boolean).length;
+  const total = m.episodes.length;
+
+  section.innerHTML = `
+    <div class="manga-title">${m.title}</div>
+    <div class="progress">${readCount}/${total} 話 既読 ・ ${m.startInfo}</div>
+  `;
+
+  const list = document.createElement('div');
+  list.className = 'ep-list';
+
+  m.episodes.forEach(e => {
+    const a = document.createElement('a');
+    a.textContent = `${e.ep}話`;
+    a.title = e.issue;
+    a.className = 'ep' + (state[key][e.ep] ? ' read' : '');
+
+    if (e.url) {
+      a.href = e.url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.addEventListener('click', () => {
+        state[key][e.ep] = true;
+        saveState(state);
+        setTimeout(render, 100);
+      });
+    } else {
+      a.style.opacity = '0.4';
+      a.style.cursor = 'default';
+      a.title = e.issue + '（URL未登録）';
+    }
+
+    list.appendChild(a);
+  });
+
+  section.appendChild(list);
+
+  const controls = document.createElement('div');
+  controls.className = 'controls';
+  const resetBtn = document.createElement('button');
+  resetBtn.textContent = 'リセット';
+  resetBtn.addEventListener('click', () => {
+    if (confirm(`${m.title} の既読をリセットしますか？`)) {
+      state[key] = {};
+      saveState(state);
+      render();
+    }
+  });
+  controls.appendChild(resetBtn);
+  section.appendChild(controls);
+
+  return section;
+}
+
 function render() {
   const state = loadState();
   const app = document.getElementById('app');
   app.innerHTML = '';
 
-  manga.forEach(m => {
-    const section = document.createElement('div');
-    section.className = 'manga-section';
+  const active = manga.filter(m => !m.done);
+  const done = manga.filter(m => m.done);
 
-    const key = m.title;
-    if (!state[key]) state[key] = {};
+  active.forEach(m => app.appendChild(buildSection(m, state)));
 
-    const readCount = Object.values(state[key]).filter(Boolean).length;
-    const total = m.episodes.length;
+  if (done.length) {
+    const doneArea = document.createElement('div');
+    doneArea.className = 'done-section';
 
-    section.innerHTML = `
-      <div class="manga-title">${m.title}</div>
-      <div class="progress">${readCount}/${total} 話 既読 ・ ${m.startInfo}</div>
-    `;
-
-    const list = document.createElement('div');
-    list.className = 'ep-list';
-
-    m.episodes.forEach(e => {
-      const a = document.createElement('a');
-      a.textContent = `${e.ep}話`;
-      a.title = e.issue;
-      a.className = 'ep' + (state[key][e.ep] ? ' read' : '');
-
-      if (e.url) {
-        a.href = e.url;
-        a.target = '_blank';
-        a.rel = 'noopener';
-        a.addEventListener('click', () => {
-          state[key][e.ep] = true;
-          saveState(state);
-          setTimeout(render, 100);
-        });
-      } else {
-        a.style.opacity = '0.4';
-        a.style.cursor = 'default';
-        a.title = e.issue + '（URL未登録）';
-      }
-
-      list.appendChild(a);
+    const header = document.createElement('div');
+    header.className = 'section-header done-toggle';
+    header.textContent = `読了済み（${done.length}作品）`;
+    header.addEventListener('click', () => {
+      header.classList.toggle('open');
+      body.classList.toggle('open');
     });
 
-    section.appendChild(list);
+    const body = document.createElement('div');
+    body.className = 'done-body';
+    done.forEach(m => body.appendChild(buildSection(m, state)));
 
-    const controls = document.createElement('div');
-    controls.className = 'controls';
-    const resetBtn = document.createElement('button');
-    resetBtn.textContent = 'リセット';
-    resetBtn.addEventListener('click', () => {
-      if (confirm(`${m.title} の既読をリセットしますか？`)) {
-        state[key] = {};
-        saveState(state);
-        render();
-      }
-    });
-    controls.appendChild(resetBtn);
-    section.appendChild(controls);
-
-    app.appendChild(section);
-  });
+    doneArea.appendChild(header);
+    doneArea.appendChild(body);
+    app.appendChild(doneArea);
+  }
 }
 
 render();
